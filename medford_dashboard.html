@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>City of Medford — Middle Housing & ADU Production Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#1B3A5C;--blue:#1B6CA8;--green:#4A8C3F;--gold:#C8973A;
+  --light:#F5F7FA;--border:#D0D8E4;--text:#1A1A2E;--muted:#5A6A7E;--white:#FFFFFF;
+  --c-town:#4A8C3F;--c-dup:#1B6CA8;--c-trip:#D05A1E;--c-quad:#6B46C1;--c-cott:#0E7490;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;color:var(--text);background:#E8EDF2;min-height:100vh;padding:20px;}
+.page-wrap{max-width:1100px;margin:0 auto;}
+.dash-wrap{border:1px solid var(--border);border-radius:4px;overflow:hidden;background:var(--white);}
+.wf-banner{background:#FEF3C7;border-bottom:1px solid #F59E0B;padding:7px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.wf-banner-text{font-size:11px;color:#92400E;font-weight:500;}
+.wf-banner-close{font-size:11px;color:#92400E;cursor:pointer;background:none;border:none;text-decoration:underline;}
+.topbar{background:var(--navy);padding:0 18px;display:flex;align-items:center;justify-content:space-between;height:52px;}
+.topbar-brand{display:flex;align-items:center;gap:10px;}
+.brand-circle{width:36px;height:36px;border-radius:50%;background:var(--white);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.brand-m{font-size:16px;font-weight:700;color:var(--navy);font-style:italic;}
+.brand-text{display:flex;flex-direction:column;line-height:1.1;}
+.brand-medford{font-size:14px;font-weight:700;color:var(--white);letter-spacing:.04em;}
+.brand-oregon{font-size:9px;color:rgba(255,255,255,0.6);letter-spacing:.14em;text-transform:uppercase;}
+.brand-title{font-size:13px;color:rgba(255,255,255,0.85);margin-left:14px;padding-left:14px;border-left:1px solid rgba(255,255,255,0.2);}
+.topbar-actions{display:flex;align-items:center;gap:12px;}
+.topbar-meta{font-size:10px;color:rgba(255,255,255,0.5);}
+
+.tabbar{background:var(--navy);padding:0 18px;display:flex;border-top:1px solid rgba(255,255,255,0.1);}
+.tab-btn{font-size:12px;font-weight:500;padding:9px 20px;cursor:pointer;color:rgba(255,255,255,0.55);border-bottom:3px solid transparent;border-top:none;border-left:none;border-right:none;background:transparent;transition:color .15s,border-color .15s;}
+.tab-btn.active{color:var(--white);border-bottom-color:var(--gold);}
+.tab-btn:hover:not(.active){color:rgba(255,255,255,0.85);}
+.toolbar{background:var(--light);border-bottom:1px solid var(--border);padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.view-label{font-size:11px;color:var(--muted);font-weight:600;}
+.tgl-group{display:flex;border:1px solid var(--border);border-radius:3px;overflow:hidden;}
+.tgl-btn{font-size:11px;padding:5px 14px;cursor:pointer;background:var(--white);color:var(--muted);border:none;border-right:1px solid var(--border);}
+.tgl-btn:last-child{border-right:none;}
+.tgl-btn.active{background:var(--blue);color:var(--white);}
+.filter-label{font-size:11px;color:var(--muted);font-weight:600;margin-left:6px;}
+.chips{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+.chip{font-size:10px;padding:3px 10px;border-radius:2px;border:1px solid var(--border);color:var(--muted);background:var(--white);cursor:pointer;transition:all .12s;}
+.chip.active{background:var(--blue);color:var(--white);border-color:var(--blue);}
+.chip-reset{background:transparent;color:var(--muted);}
+
+.year-filter{display:flex;align-items:center;gap:6px;margin-left:auto;}
+.year-filter label{font-size:10px;color:var(--muted);font-weight:600;}
+.year-select{font-size:10px;padding:3px 6px;border:1px solid var(--border);border-radius:3px;background:var(--white);color:var(--text);cursor:pointer;}
+.body{padding:14px;background:var(--light);display:grid;grid-template-columns:220px 1fr;gap:12px;}
+.left-col{display:flex;flex-direction:column;gap:10px;}
+.stat-hero{background:var(--navy);border-radius:3px;padding:16px;}
+.stat-label{font-size:10px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.stat-val{font-size:28px;font-weight:700;color:var(--white);display:flex;align-items:center;gap:8px;line-height:1;}
+.stat-sub{font-size:11px;color:rgba(255,255,255,0.65);margin-top:5px;}
+.stat-note{font-size:10px;color:rgba(255,255,255,0.45);margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,0.12);}
+
+.panel{background:var(--white);border:1px solid var(--border);border-radius:3px;padding:10px;}
+.panel-title{font-size:10px;font-weight:700;color:var(--navy);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;}
+.map-ph{background:#E8EFF5;border-radius:2px;height:155px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--muted);font-size:11px;border:1px solid var(--border);position:relative;}
+.map-info-badge{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:var(--blue);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;}
+.map-tooltip{display:none;position:absolute;top:28px;right:6px;background:var(--navy);color:white;font-size:10px;padding:8px 10px;border-radius:3px;width:185px;line-height:1.5;z-index:10;text-align:left;}
+.map-info-badge:hover ~ .map-tooltip{display:block;}
+.right-col{display:flex;flex-direction:column;gap:10px;}
+.chart-panel{background:var(--white);border:1px solid var(--border);border-radius:3px;padding:14px;}
+.chart-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.chart-panel-title{font-size:12px;font-weight:700;color:var(--navy);}
+
+.chart-subtitle{font-size:10px;color:var(--muted);margin-bottom:10px;}
+.chart-wrap{position:relative;}
+.legend{display:flex;flex-wrap:wrap;gap:5px 14px;margin-top:10px;}
+.li{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);}
+.ld{width:10px;height:10px;border-radius:1px;flex-shrink:0;}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:3px;padding:12px;text-align:center;}
+.stat-card-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.stat-card-val{font-size:22px;font-weight:700;color:var(--navy);}
+.attr-panel{background:var(--white);border:1px solid var(--border);border-radius:3px;overflow:hidden;}
+.attr-header{background:var(--navy);color:var(--white);padding:8px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+.attr-header .arrow{font-size:11px;margin-left:auto;transition:transform .2s;display:inline-block;}
+.attr-header.open .arrow{transform:rotate(180deg);}
+.attr-body{display:none;padding:10px 14px;}
+.attr-body.open{display:block;}
+table.attr{width:100%;border-collapse:collapse;font-size:11px;}
+table.attr th{background:var(--light);color:var(--navy);padding:6px 8px;text-align:left;font-weight:700;border-bottom:1px solid var(--border);}
+table.attr td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text);}
+table.attr tr:last-child td{border-bottom:none;}
+.req{color:var(--blue);font-weight:700;}
+.opt{color:var(--muted);}
+.footer{background:var(--navy);padding:8px 18px;display:flex;justify-content:space-between;align-items:center;}
+.footer-txt{font-size:10px;color:rgba(255,255,255,0.45);}
+.footer-link{font-size:10px;color:var(--gold);}
+.hidden{display:none!important;}
+@media print{
+  body{background:white;padding:0;}
+  .page-wrap{max-width:100%;}
+  .wf-banner,.toolbar,.attr-panel{display:none!important;}
+  .dash-wrap{border:none;}
+  .body,.chart-panel{break-inside:avoid;}
+}
+</style>
+</head>
+<body>
+<div class="page-wrap"><div class="dash-wrap">
+
+<div class="wf-banner" id="wf-banner">
+  <span class="wf-banner-text">⚠ Wireframe — dummy data only. Not for public distribution. This prototype represents the proposed dashboard design for City of Medford review.</span>
+  <button class="wf-banner-close" onclick="document.getElementById('wf-banner').style.display='none'">Dismiss</button>
+</div>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-circle"><span class="brand-m">M</span></div>
+    <div class="brand-text"><span class="brand-medford">MEDFORD</span><span class="brand-oregon">Oregon</span></div>
+    <span class="brand-title">Middle Housing &amp; ADU Production Dashboard</span>
+  </div>
+  <div class="topbar-actions">
+    <span class="topbar-meta" id="last-updated"></span>
+  </div>
+</div>
+
+<div class="tabbar">
+  <button class="tab-btn active" id="tab-mh" onclick="switchTab('mh')">Middle Housing</button>
+  <button class="tab-btn" id="tab-adu" onclick="switchTab('adu')">Accessory Dwelling Units (ADU)</button>
+</div>
+
+<!-- MIDDLE HOUSING -->
+<div id="content-mh">
+
+  <div class="toolbar" id="mh-toolbar-prod">
+    <span class="view-label">View:</span>
+    <div class="tgl-group">
+      <button class="tgl-btn active" id="mh-tgl-prod" onclick="switchMHView('prod')">Units Produced</button>
+      <button class="tgl-btn" id="mh-tgl-constr" onclick="switchMHView('constr')">Under Construction</button>
+    </div>
+    <span class="filter-label">Filter by type:</span>
+    <div class="chips" id="mh-chips-prod">
+      <div class="chip active" data-idx="0" onclick="toggleChip(this,'prod')">Townhome</div>
+      <div class="chip active" data-idx="1" onclick="toggleChip(this,'prod')">Duplex</div>
+      <div class="chip active" data-idx="2" onclick="toggleChip(this,'prod')">Triplex</div>
+      <div class="chip active" data-idx="3" onclick="toggleChip(this,'prod')">Quadplex</div>
+      <div class="chip active" data-idx="4" onclick="toggleChip(this,'prod')">Cottage Cluster</div>
+      <div class="chip chip-reset" onclick="resetChips('prod')">Reset</div>
+    </div>
+    <div class="year-filter">
+      <label>From</label>
+      <select class="year-select" id="mh-year-from" onchange="applyYearFilter('mh-prod')">
+        <option>2020</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option>
+      </select>
+      <label>To</label>
+      <select class="year-select" id="mh-year-to" onchange="applyYearFilter('mh-prod')">
+        <option>2020</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option><option selected>2026 YTD</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="toolbar hidden" id="mh-toolbar-constr">
+    <span class="view-label">View:</span>
+    <div class="tgl-group">
+      <button class="tgl-btn" onclick="switchMHView('prod')">Units Produced</button>
+      <button class="tgl-btn active" onclick="switchMHView('constr')">Under Construction</button>
+    </div>
+    <span class="filter-label">Filter by type:</span>
+    <div class="chips" id="mh-chips-constr">
+      <div class="chip active" data-idx="0" onclick="toggleChip(this,'constr')">Townhome</div>
+      <div class="chip active" data-idx="1" onclick="toggleChip(this,'constr')">Duplex</div>
+      <div class="chip active" data-idx="2" onclick="toggleChip(this,'constr')">Triplex</div>
+      <div class="chip active" data-idx="3" onclick="toggleChip(this,'constr')">Quadplex</div>
+      <div class="chip active" data-idx="4" onclick="toggleChip(this,'constr')">Cottage Cluster</div>
+      <div class="chip chip-reset" onclick="resetChips('constr')">Reset</div>
+    </div>
+    <div class="year-filter">
+      <label>From</label>
+      <select class="year-select" id="mhc-year-from" onchange="applyYearFilter('mh-constr')">
+        <option>2020</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option>
+      </select>
+      <label>To</label>
+      <select class="year-select" id="mhc-year-to" onchange="applyYearFilter('mh-constr')">
+        <option>2020</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option><option selected>2026 YTD</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="body" id="mh-body-prod">
+    <div class="left-col">
+      <div class="stat-hero">
+        <div class="stat-label">Units produced this year</div>
+        <div class="stat-val">🏠 <span id="mh-hero-num">70</span> units</div>
+        <div class="stat-sub">▲ 12 from this time last year (21%)</div>
+        <div class="stat-note">Middle housing = 25% of all new housing produced this year</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📍 Permit locations</div>
+        <div class="map-ph">
+          <div style="font-size:28px;">🗺</div>
+          <div>ArcGIS interactive map</div>
+          <div style="font-size:10px;opacity:.7;">Clustered by housing type</div>
+          <div class="map-info-badge">i</div>
+          <div class="map-tooltip">In the live dashboard, clicking a cluster expands individual permit pop-ups showing address, housing type, unit count, and permit date.</div>
+        </div>
+        <div class="legend" style="margin-top:8px;">
+          <div class="li"><div class="ld" style="background:var(--c-town);"></div>Townhome</div>
+          <div class="li"><div class="ld" style="background:var(--c-dup);"></div>Duplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-trip);"></div>Triplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-quad);"></div>Quadplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-cott);"></div>Cottage Cluster</div>
+        </div>
+      </div>
+    </div>
+    <div class="right-col">
+      <div class="chart-panel">
+        <div class="chart-panel-header">
+          <span class="chart-panel-title">Units produced by year — stacked by housing type</span>
+        </div>
+        <div class="chart-wrap"><canvas id="mh-stacked-chart" height="210"></canvas></div>
+        <div class="legend">
+          <div class="li"><div class="ld" style="background:var(--c-town);"></div>Townhome</div>
+          <div class="li"><div class="ld" style="background:var(--c-dup);"></div>Duplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-trip);"></div>Triplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-quad);"></div>Quadplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-cott);"></div>Cottage Cluster</div>
+        </div>
+      </div>
+      <div class="attr-panel">
+        <div class="attr-header" onclick="toggleAttr('attr-mh')">📋 Data attributes required — middle housing permits<span class="arrow">▼</span></div>
+        <div class="attr-body" id="attr-mh-body">
+          <table class="attr">
+            <tr><th>Field name</th><th>Type</th><th>Required for</th><th>Notes / accepted values</th></tr>
+            <tr><td>permit_id</td><td>String</td><td><span class="req">Map, chart</span></td><td>Unique identifier from TrakIt</td></tr>
+            <tr><td>latitude</td><td>Decimal</td><td><span class="req">Map</span></td><td>Or provide address for geocoding</td></tr>
+            <tr><td>longitude</td><td>Decimal</td><td><span class="req">Map</span></td><td>Or provide address for geocoding</td></tr>
+            <tr><td>housing_type</td><td>String</td><td><span class="req">Map, chart, filter</span></td><td>Townhome, Duplex, Triplex, Quadplex, Cottage Cluster, Townhome+ADU</td></tr>
+            <tr><td>permit_status</td><td>String</td><td><span class="req">Toggle (Produced vs. Construction)</span></td><td>Planning Approval, Permit Issued, In Review, Certificate of Occupancy</td></tr>
+            <tr><td>date_issued</td><td>Date</td><td><span class="req">Chart grouping by year</span></td><td>Date of building permit issuance</td></tr>
+            <tr><td>date_co</td><td>Date</td><td><span class="req">Units Produced view</span></td><td>Certificate of Occupancy date — null if under construction</td></tr>
+            <tr><td>unit_count</td><td>Integer</td><td><span class="req">All metrics and charts</span></td><td>Number of dwelling units in this permit</td></tr>
+            <tr><td>address</td><td>String</td><td><span class="opt">Optional</span></td><td>For map pop-ups and display labels</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="body hidden" id="mh-body-constr">
+    <div class="left-col">
+      <div class="stat-hero">
+        <div class="stat-label">Units under construction</div>
+        <div class="stat-val">🔨 175 units</div>
+        <div class="stat-sub">Permits issued — C/O not yet received</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📍 Active construction sites</div>
+        <div class="map-ph">
+          <div style="font-size:28px;">🗺</div>
+          <div>ArcGIS interactive map</div>
+          <div style="font-size:10px;opacity:.7;">Permits issued, no C/O</div>
+          <div class="map-info-badge">i</div>
+          <div class="map-tooltip">In the live dashboard, clicking a cluster expands individual permit pop-ups showing address, housing type, unit count, and permit date.</div>
+        </div>
+        <div class="legend" style="margin-top:8px;">
+          <div class="li"><div class="ld" style="background:var(--c-town);"></div>Townhome</div>
+          <div class="li"><div class="ld" style="background:var(--c-dup);"></div>Duplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-trip);"></div>Triplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-quad);"></div>Quadplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-cott);"></div>Cottage Cluster</div>
+        </div>
+      </div>
+    </div>
+    <div class="right-col">
+      <div class="chart-panel">
+        <div class="chart-panel-header">
+          <span class="chart-panel-title">Units under construction by year — stacked by housing type</span>
+        </div>
+        <div class="chart-wrap"><canvas id="mh-constr-chart" height="210"></canvas></div>
+        <div class="legend">
+          <div class="li"><div class="ld" style="background:var(--c-town);"></div>Townhome</div>
+          <div class="li"><div class="ld" style="background:var(--c-dup);"></div>Duplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-trip);"></div>Triplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-quad);"></div>Quadplex</div>
+          <div class="li"><div class="ld" style="background:var(--c-cott);"></div>Cottage Cluster</div>
+        </div>
+      </div>
+      <div class="attr-panel">
+        <div class="attr-header" onclick="toggleAttr('attr-mh2')">📋 Data attributes required — middle housing permits (under construction)<span class="arrow">▼</span></div>
+        <div class="attr-body" id="attr-mh2-body">
+          <table class="attr">
+            <tr><th>Field name</th><th>Type</th><th>Required for</th><th>Notes / accepted values</th></tr>
+            <tr><td>permit_id</td><td>String</td><td><span class="req">Map, chart</span></td><td>Unique identifier from TrakIt</td></tr>
+            <tr><td>latitude / longitude</td><td>Decimal</td><td><span class="req">Map</span></td><td>Or provide address for geocoding</td></tr>
+            <tr><td>housing_type</td><td>String</td><td><span class="req">Chart, filter</span></td><td>Townhome, Duplex, Triplex, Quadplex, Cottage Cluster</td></tr>
+            <tr><td>permit_status</td><td>String</td><td><span class="req">Filter — Permit Issued, no C/O</span></td><td>Permit Issued</td></tr>
+            <tr><td>date_issued</td><td>Date</td><td><span class="req">Chart grouping by year</span></td><td>Date of building permit issuance</td></tr>
+            <tr><td>unit_count</td><td>Integer</td><td><span class="req">All metrics</span></td><td>Number of dwelling units</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADU -->
+<div id="content-adu" class="hidden">
+  <div class="toolbar">
+    <span class="view-label">View:</span>
+    <div class="tgl-group">
+      <button class="tgl-btn active" id="adu-tgl-prod" onclick="switchADUView('prod')">Units Produced</button>
+      <button class="tgl-btn" id="adu-tgl-constr" onclick="switchADUView('constr')">Under Construction</button>
+    </div>
+    <div class="year-filter">
+      <label>From</label>
+      <select class="year-select" id="adu-year-from" onchange="applyYearFilter('adu')">
+        <option>2020</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option>
+      </select>
+      <label>To</label>
+      <select class="year-select" id="adu-year-to" onchange="applyYearFilter('adu')">
+        <option>2020</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option><option selected>2026 YTD</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="body" id="adu-body-prod" style="grid-template-columns:200px 1fr;">
+    <div class="left-col">
+      <div class="stat-hero">
+        <div class="stat-label">ADU planning approvals</div>
+        <div class="stat-val" style="font-size:24px;">711</div>
+        <div class="stat-sub">All-time total</div>
+      </div>
+      <div class="stat-card"><div class="stat-card-label">Building permits issued</div><div class="stat-card-val">281</div></div>
+      <div class="stat-card"><div class="stat-card-label">Permits in review</div><div class="stat-card-val">21</div></div>
+      <div class="panel">
+        <div class="panel-title">📍 ADU permit locations</div>
+        <div class="map-ph" style="height:110px;">
+          <div style="font-size:24px;">🗺</div>
+          <div>ArcGIS permit map</div>
+          <div class="map-info-badge">i</div>
+          <div class="map-tooltip">In the live dashboard, clicking a cluster expands individual permit pop-ups showing address, permit category, and submission date.</div>
+        </div>
+      </div>
+    </div>
+    <div class="right-col">
+      <div class="chart-panel">
+        <div class="chart-panel-header"><span class="chart-panel-title">Approved ADUs by year — planning application vs. building permit</span></div>
+        <div class="chart-wrap"><canvas id="adu-prod-chart" height="210"></canvas></div>
+        <div class="legend">
+          <div class="li"><div class="ld" style="background:#85B7EB;"></div>Planning application</div>
+          <div class="li"><div class="ld" style="background:#1B3A5C;"></div>Building permit</div>
+        </div>
+      </div>
+      <div class="attr-panel">
+        <div class="attr-header" onclick="toggleAttr('attr-adu')">📋 Data attributes required — ADU permits<span class="arrow">▼</span></div>
+        <div class="attr-body" id="attr-adu-body">
+          <table class="attr">
+            <tr><th>Field name</th><th>Type</th><th>Required for</th><th>Notes / accepted values</th></tr>
+            <tr><td>permit_id</td><td>String</td><td><span class="req">Map, chart</span></td><td>Unique identifier from TrakIt</td></tr>
+            <tr><td>latitude / longitude</td><td>Decimal</td><td><span class="req">Map</span></td><td>Or provide address for geocoding</td></tr>
+            <tr><td>permit_category</td><td>String</td><td><span class="req">Chart split (two series)</span></td><td>Planning Application, Building Permit</td></tr>
+            <tr><td>permit_status</td><td>String</td><td><span class="req">Metric cards</span></td><td>Approved, Issued, In Review</td></tr>
+            <tr><td>date_submitted</td><td>Date</td><td><span class="req">Chart grouping by year</span></td><td>Application or permit submission date</td></tr>
+            <tr><td>address</td><td>String</td><td><span class="opt">Optional</span></td><td>For map pop-ups</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="body hidden" id="adu-body-constr" style="grid-template-columns:200px 1fr;">
+    <div class="left-col">
+      <div class="stat-hero">
+        <div class="stat-label">ADUs under construction</div>
+        <div class="stat-val" style="font-size:24px;">🔨 38</div>
+        <div class="stat-sub">Permits issued — C/O not yet received</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">📍 Active construction sites</div>
+        <div class="map-ph" style="height:178px;">
+          <div style="font-size:24px;">🗺</div>
+          <div>ArcGIS permit map</div>
+          <div style="font-size:10px;opacity:.7;">Permits issued, no C/O</div>
+          <div class="map-info-badge">i</div>
+          <div class="map-tooltip">In the live dashboard, clicking a cluster expands individual permit pop-ups showing address, permit status, and permit date.</div>
+        </div>
+      </div>
+    </div>
+    <div class="right-col">
+      <div class="chart-panel">
+        <div class="chart-panel-header"><span class="chart-panel-title">ADUs under construction by year</span></div>
+        <div class="chart-wrap"><canvas id="adu-constr-chart" height="210"></canvas></div>
+        <div class="legend"><div class="li"><div class="ld" style="background:#1B6CA8;"></div>Building permits issued (no C/O)</div></div>
+      </div>
+      <div class="attr-panel">
+        <div class="attr-header" onclick="toggleAttr('attr-adu2')">📋 Data attributes required — ADU permits (under construction)<span class="arrow">▼</span></div>
+        <div class="attr-body" id="attr-adu2-body">
+          <table class="attr">
+            <tr><th>Field name</th><th>Type</th><th>Required for</th><th>Notes / accepted values</th></tr>
+            <tr><td>permit_id</td><td>String</td><td><span class="req">Map, chart</span></td><td>Unique identifier from TrakIt</td></tr>
+            <tr><td>latitude / longitude</td><td>Decimal</td><td><span class="req">Map</span></td><td>Or provide address for geocoding</td></tr>
+            <tr><td>permit_status</td><td>String</td><td><span class="req">Filter — issued, no C/O</span></td><td>Permit Issued</td></tr>
+            <tr><td>date_issued</td><td>Date</td><td><span class="req">Chart grouping by year</span></td><td>Date of building permit issuance</td></tr>
+            <tr><td>date_co</td><td>Date</td><td><span class="req">Identify active construction</span></td><td>Null if under construction</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span class="footer-txt">Data source: City of Medford TrakIt permit system &nbsp;|&nbsp; <strong style="color:rgba(255,255,255,0.55);">Dummy data — wireframe only</strong></span>
+  <span class="footer-link">planning@medfordoregon.gov</span>
+</div>
+
+</div></div>
+<script>
+const COLORS={town:'#4A8C3F',dup:'#1B6CA8',trip:'#D05A1E',quad:'#6B46C1',cott:'#0E7490',planBlue:'#85B7EB',bldNavy:'#1B3A5C'};
+const ALL_YEARS=['2020','2021','2022','2023','2024','2025','2026 YTD'];
+
+const MH_DATA={
+  townhome:[0,0,8,52,72,83,36],
+  duplex:  [0,0,8,29,23,31,10],
+  triplex: [0,0,0, 6, 6,14, 6],
+  quadplex:[0,0,0, 0,23,29, 5],
+  cottage: [0,0,0, 0,16,16,13],
+};
+const MH_CONSTR_DATA={
+  townhome:[0, 2,18,38,62,88,106],
+  duplex:  [0, 0, 4,12,16,22, 20],
+  triplex: [0, 0, 0, 4, 6,10, 12],
+  quadplex:[0, 0, 0, 0, 8,12, 10],
+  cottage: [0, 0, 0, 0, 6,14, 21],
+};
+const ADU_DATA={
+  planning:[86,91,65,41,54,15,0],
+  building:[ 0, 8,28,48,38,52,15],
+};
+const ADU_CONSTR_DATA=[12,18,24,32,30,38,10];
+
+const TYPE_KEYS=['townhome','duplex','triplex','quadplex','cottage'];
+const TYPE_LABELS=['Townhome','Duplex','Triplex','Quadplex','Cottage Cluster'];
+const TYPE_COLORS=[COLORS.town,COLORS.dup,COLORS.trip,COLORS.quad,COLORS.cott];
+
+const chartInstances={};
+let activeProdTypes=[0,1,2,3,4];
+let activeConstrTypes=[0,1,2,3,4];
+
+// ── last-updated timestamp ──────────────────────────────────────
+const now=new Date();
+document.getElementById('last-updated').textContent=
+  'Last updated: '+now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+// ── year-range helpers ──────────────────────────────────────────
+function getYearSlice(fromId,toId){
+  const from=document.getElementById(fromId).value;
+  const to=document.getElementById(toId).value;
+  const fi=ALL_YEARS.indexOf(from), ti=ALL_YEARS.indexOf(to);
+  if(fi<0||ti<0||fi>ti) return {labels:ALL_YEARS,indices:ALL_YEARS.map((_,i)=>i)};
+  const indices=[];for(let i=fi;i<=ti;i++)indices.push(i);
+  return {labels:ALL_YEARS.slice(fi,ti+1),indices};
+}
+function sliceData(arr,indices){return indices.map(i=>arr[i]);}
+
+// ── chart factory helpers ───────────────────────────────────────
+const GRID_COLOR='#E8EDF2';
+const TICK={font:{size:11},color:'#5A6A7E'};
+
+function makeStacked(id,datasets,labels){
+  const ctx=document.getElementById(id);if(!ctx)return;
+  if(chartInstances[id])chartInstances[id].destroy();
+  chartInstances[id]=new Chart(ctx,{
+    type:'bar',data:{labels,datasets},
+    options:{
+      animation:false,responsive:true,maintainAspectRatio:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${Math.round(c.parsed.y)} units`}}
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:TICK,border:{display:false}},
+        y:{stacked:true,grid:{color:GRID_COLOR,drawTicks:false},ticks:TICK,border:{display:false},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function makeSimpleBar(id,data,labels,color){
+  const ctx=document.getElementById(id);if(!ctx)return;
+  if(chartInstances[id])chartInstances[id].destroy();
+  chartInstances[id]=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{data,backgroundColor:color,borderWidth:0,borderRadius:2}]},
+    options:{
+      animation:ANIM,responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${Math.round(c.parsed.y)} units`}}},
+      scales:{
+        x:{grid:{display:false},ticks:TICK,border:{display:false}},
+        y:{grid:{color:GRID_COLOR,drawTicks:false},ticks:TICK,border:{display:false},beginAtZero:true}
+      }
+    }
+  });
+}
+
+// ── build functions ─────────────────────────────────────────────
+function buildMHProd(){
+  const {labels,indices}=getYearSlice('mh-year-from','mh-year-to');
+  const active=activeProdTypes;
+  const datasets=TYPE_KEYS.map((k,i)=>({
+    label:TYPE_LABELS[i],
+    data:active.includes(i)?sliceData(MH_DATA[k],indices):Array(indices.length).fill(0),
+    backgroundColor:TYPE_COLORS[i],borderWidth:0,
+  }));
+  makeStacked('mh-stacked-chart',datasets,labels);
+}
+
+function buildMHConstr(){
+  const {labels,indices}=getYearSlice('mhc-year-from','mhc-year-to');
+  const active=activeConstrTypes;
+  const datasets=TYPE_KEYS.map((k,i)=>({
+    label:TYPE_LABELS[i],
+    data:active.includes(i)?sliceData(MH_CONSTR_DATA[k],indices):Array(indices.length).fill(0),
+    backgroundColor:TYPE_COLORS[i],borderWidth:0,
+  }));
+  makeStacked('mh-constr-chart',datasets,labels);
+}
+
+function buildADUProd(){
+  const {labels,indices}=getYearSlice('adu-year-from','adu-year-to');
+  const ctx=document.getElementById('adu-prod-chart');if(!ctx)return;
+  if(chartInstances['adu-prod-chart'])chartInstances['adu-prod-chart'].destroy();
+  chartInstances['adu-prod-chart']=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Planning application',data:sliceData(ADU_DATA.planning,indices),backgroundColor:COLORS.planBlue,borderWidth:0},
+      {label:'Building permit',data:sliceData(ADU_DATA.building,indices),backgroundColor:COLORS.bldNavy,borderWidth:0}
+    ]},
+    options:{
+      animation:ANIM,responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:c=>` ${c.dataset.label}: ${Math.round(c.parsed.y)}`,
+        afterBody:items=>{const t=items.reduce((s,i)=>s+i.parsed.y,0);return t>0?[`Total: ${Math.round(t)}`]:[];}
+      }}},
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:TICK,border:{display:false}},
+        y:{stacked:true,grid:{color:GRID_COLOR,drawTicks:false},ticks:TICK,border:{display:false},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function buildADUConstr(){
+  makeSimpleBar('adu-constr-chart',ADU_CONSTR_DATA,ALL_YEARS,'#1B6CA8');
+}
+
+// ── year filter ─────────────────────────────────────────────────
+function applyYearFilter(scope){
+  if(scope==='mh-prod') buildMHProd();
+  else if(scope==='mh-constr') buildMHConstr();
+  else if(scope==='adu'){buildADUProd();}
+}
+
+// ── chip toggles ────────────────────────────────────────────────
+function toggleChip(el,view){
+  const idx=parseInt(el.dataset.idx);
+  el.classList.toggle('active');
+  if(view==='prod'){
+    activeProdTypes=activeProdTypes.includes(idx)?activeProdTypes.filter(i=>i!==idx):[...activeProdTypes,idx].sort((a,b)=>a-b);
+    buildMHProd();
+  } else {
+    activeConstrTypes=activeConstrTypes.includes(idx)?activeConstrTypes.filter(i=>i!==idx):[...activeConstrTypes,idx].sort((a,b)=>a-b);
+    buildMHConstr();
+  }
+}
+function resetChips(view){
+  if(view==='prod'){activeProdTypes=[0,1,2,3,4];document.querySelectorAll('#mh-chips-prod .chip:not(.chip-reset)').forEach(c=>c.classList.add('active'));buildMHProd();}
+  else{activeConstrTypes=[0,1,2,3,4];document.querySelectorAll('#mh-chips-constr .chip:not(.chip-reset)').forEach(c=>c.classList.add('active'));buildMHConstr();}
+}
+
+// ── tab / view switching ────────────────────────────────────────
+function switchTab(t){
+  document.getElementById('content-mh').classList.toggle('hidden',t!=='mh');
+  document.getElementById('content-adu').classList.toggle('hidden',t!=='adu');
+  document.getElementById('tab-mh').classList.toggle('active',t==='mh');
+  document.getElementById('tab-adu').classList.toggle('active',t==='adu');
+  if(t==='adu') buildADUProd();
+}
+function switchMHView(v){
+  document.getElementById('mh-body-prod').classList.toggle('hidden',v!=='prod');
+  document.getElementById('mh-body-constr').classList.toggle('hidden',v!=='constr');
+  document.getElementById('mh-toolbar-prod').classList.toggle('hidden',v!=='prod');
+  document.getElementById('mh-toolbar-constr').classList.toggle('hidden',v!=='constr');
+  document.getElementById('mh-tgl-prod').classList.toggle('active',v==='prod');
+  document.getElementById('mh-tgl-constr').classList.toggle('active',v==='constr');
+  if(v==='constr') buildMHConstr();
+  else buildMHProd();
+}
+function switchADUView(v){
+  document.getElementById('adu-body-prod').classList.toggle('hidden',v!=='prod');
+  document.getElementById('adu-body-constr').classList.toggle('hidden',v!=='constr');
+  document.getElementById('adu-tgl-prod').classList.toggle('active',v==='prod');
+  document.getElementById('adu-tgl-constr').classList.toggle('active',v==='constr');
+  if(v==='prod') buildADUProd();
+  else buildADUConstr();
+}
+
+// ── accordion ───────────────────────────────────────────────────
+function toggleAttr(id){
+  const hdr=document.querySelector(`[onclick="toggleAttr('${id}')"]`);
+  const body=document.getElementById(id+'-body');
+  if(!body)return;
+  body.classList.toggle('open');
+  if(hdr)hdr.classList.toggle('open');
+}
+
+// ── init ────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  buildMHProd();
+});
+</script>
+</body>
+</html>
